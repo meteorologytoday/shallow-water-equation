@@ -21,6 +21,17 @@ int main() {
 		return sqrtf(pow(x-centerx,2) + pow(y-centery,2));
 	};
 
+
+
+
+	std::string file;
+
+    file = input + "/init_divg.bin";
+	writeField(file.c_str(), vort, GRIDS);
+
+	file = input + "/init_geop.bin";
+	writeField(file.c_str(), vort, GRIDS);
+
 	float x, y;
 	for(int i=0; i<XPTS; ++i) {
 		x = i * dx;
@@ -32,7 +43,7 @@ int main() {
 		}
 	}
 
-	std::string file = input + "/" + init_file;
+	file = input + "/init_vort.bin";
 	writeField(file.c_str(), vort, GRIDS);
 
 	return 0;

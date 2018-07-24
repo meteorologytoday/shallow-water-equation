@@ -13,61 +13,15 @@
 #include <assert.h>
 #include <unistd.h> // getopt
 
-#include "configuration_shallow.hpp"
+#include "configuration.hpp"
 #include "fieldio.hpp"
 #include "fftwfop.cpp" // template class must include its implementation
 #include "vector_operation.cpp"
 
-
-
-
 using namespace std;
 
-#include "variables_declaration.hpp"
-
-void fftwf_backward_normalize(float *data) {
-	for(int i=0; i < GRIDS; ++i) {
-		data[i] /= GRIDS;
-	}
-}
-
-float sumSqr(fftwf_complex *c) {
-	float strength = 0;
-	for(int i=0; i < HALF_GRIDS;++i){
-		strength += pow(c[i][0],2) + pow(c[i][1],2);
-	}
-	return strength;
-}
-
-void print_spectrum(fftwf_complex *in) {
-	for(int i=0; i < XPTS;++i){
-		for(int j=0; j < HALF_YPTS;++j){
-			printf("(%+6.2f, %+6.2f) ", in[HIDX(i,j)][0], in[HIDX(i,j)][1]);
-		}
-		printf("\n");
-	}
-}
-
-void print_error(char * str) {
-	printf("Error: %s\n", str);
-}
-
-float * malloc_field_re() {
-	return (float*) fftwf_malloc(sizeof(float) * GRIDS);
-}
-
-
-fftwf_complex * malloc_field_im() {
-    return (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * HALF_GRIDS);
-}
-
-fftwf_plan crt_fwd_plan(float * re, fftwf_complex * im) {
-    return fftwf_plan_dft_r2c_2d(XPTS, YPTS, re, im, FFTW_ESTIMATE);
-}
-
-fftwf_plan crt_bwd_plan(float * re, fftwf_complex * im) {
-    return fftwf_plan_dft_c2r_2d(XPTS, YPTS, im, re, FFTW_ESTIMATE);
-}
+#include "variables_declaration.cpp"
+#include "helper_funcs.cpp"
 
 int main(int argc, char* args[]) {
 
@@ -92,121 +46,20 @@ int main(int argc, char* args[]) {
 
 	// initiate variables
 
-	Q          = malloc_field_re();
-	vort       = malloc_field_re();
-	divg       = malloc_field_re();
-	geop       = malloc_field_re();
-	bg_vort    = malloc_field_re();
+    #include "variables_initialization.cpp"
 
-	u         = malloc_field_re();
-	u2        = malloc_field_re();
-	u_divg    = malloc_field_re();
-	u_vort    = malloc_field_re();
+    printf("Reading input... ");
 
-    v         = malloc_field_re();
-    v2        = malloc_field_re();
-    v_divg    = malloc_field_re();
-    v_vort    = malloc_field_re();
-
-
-    K         = malloc_field_re();
-    E         = malloc_field_re();
-
-    absvort   = malloc_field_re();
-    absvort_u = malloc_field_re();
-    absvort_v = malloc_field_re();
-    
-    geop_u    = malloc_field_re();
-    geop_v    = malloc_field_re();
-    
-    dvortdx   = malloc_field_re();
-    dvortdy   = malloc_field_re();
-    
-    dvortdt   = malloc_field_re();
-    ddivgdt   = malloc_field_re();
-    dgeopdt   = malloc_field_re();
-    
-    workspace = malloc_field_re();
-
-
-    // complex numbers
-    
-    vort_c0 = malloc_field_im();
-    vort_c  = malloc_field_im(); 
-    lvort_c = malloc_field_im();
-
-    divg_c0 = malloc_field_im();
-    divg_c  = malloc_field_im(); 
-    ldivg_c = malloc_field_im();
-
-    geop_c0 = malloc_field_im();
-    geop_c  = malloc_field_im(); 
-    lgeop_c = malloc_field_im();
-    
-    absvort_u_c  = malloc_field_im();
-    absvort_v_c  = malloc_field_im();
-    geop_u_c     = malloc_field_im();
-    geop_v_c     = malloc_field_im();
-    E_c          = malloc_field_im();
-    chi_c        = malloc_field_im();
-    psi_c        = malloc_field_im();
-    tmp_c        = malloc_field_im();
-    copy_for_c2r = malloc_field_im();
-
-    dvortdt_c    = malloc_field_im();
-    ddivgdt_c    = malloc_field_im();
-    dgeopdt_c    = malloc_field_im();
-    
-    for(int k=0; k < 4; ++k) {
-        rk4_vort_c[k] = malloc_field_im();
-        rk4_divg_c[k] = malloc_field_im();
-        rk4_geop_c[k] = malloc_field_im();
-    }
-
-    // plans
-    p_fwd_vort       = crt_fwd_plan(Q,       Q_c);
-    
-    p_fwd_vort       = crt_fwd_plan(vort, vort_c);
-    p_bwd_vort       = crt_bwd_plan(vort, vort_c);
-
-    p_fwd_divg       = crt_fwd_plan(divg, divg_c);
-    p_bwd_divg       = crt_bwd_plan(divg, divg_c);
-
-    p_fwd_geop       = crt_fwd_plan(geop, geop_c);
-    p_bwd_geop       = crt_bwd_plan(geop, geop_c);
-
-    p_bwd_dvortdx    = crt_bwd_plan(dvortdx, tmp_c);
-    p_bwd_dvortdy    = crt_bwd_plan(dvortdy, tmp_c);
-    
-    p_bwd_u          = crt_bwd_plan(u     , tmp_c);
-    p_bwd_u_vort     = crt_bwd_plan(u_vort, tmp_c);
-    p_bwd_u_divg     = crt_bwd_plan(u_divg, tmp_c);
-
-    p_bwd_v          = crt_bwd_plan(v     , tmp_c);
-    p_bwd_v_vort     = crt_bwd_plan(v_vort, tmp_c);
-    p_bwd_v_divg     = crt_bwd_plan(v_divg, tmp_c);
-
-
-    p_fwd_dvortdt    = crt_fwd_plan(dvortdt, dvortdt_c);
-    p_fwd_ddivgdt    = crt_fwd_plan(ddivgdt, ddivgdt_c);
-    p_fwd_dgeopdt    = crt_fwd_plan(dgeopdt, dgeopdt_c);
-    
-    p_fwd_absvort_u  = crt_fwd_plan(absvort_u, absvort_u_c);
-    p_fwd_absvort_v  = crt_fwd_plan(absvort_v, absvort_v_c);
-
-    p_fwd_geop_u     = crt_fwd_plan(geop_u, geop_u_c);
-    p_fwd_geop_v     = crt_fwd_plan(geop_v, geop_v_c);
-
-    p_fwd_E          = crt_fwd_plan(E, E_c);
-
-		// read input
-	Lx = LX;
-	Ly = LY;
-	dx = Lx / XPTS;
-	dy = Ly / YPTS;
-
-	sprintf(filename, "%s/%s", input.c_str(), init_file.c_str());
+	sprintf(filename, "%s/init_vort.bin", input.c_str());
 	readField(filename, vort, GRIDS);
+
+	//sprintf(filename, "%s/init_divg.bin", input.c_str());
+	//readField(filename, vort, GRIDS);
+
+	//sprintf(filename, "%s/init_geop.bin", input.c_str());
+	//readField(filename, vort, GRIDS);
+    printf("done.\n");
+
 
 	auto getDvortdt = [&](){
 		
@@ -386,7 +239,9 @@ int main(int argc, char* args[]) {
 	fftwf_execute(p_fwd_vort);
 	fftwf_execute(p_fwd_divg);
 	fftwf_execute(p_fwd_geop);
+	printf("[1] Fwd Q ... "); fflush(stdout);
 	fftwf_execute(p_fwd_Q);
+	printf("done\n");
 
 	int record_flag = 0;
 	for(int step = 0; step < total_steps; ++step) {
@@ -402,7 +257,7 @@ int main(int argc, char* args[]) {
 			memcpy(copy_for_c2r, vort_c, sizeof(fftwf_complex) * HALF_GRIDS);
 
 			fftwf_execute(p_bwd_vort); fftwf_backward_normalize(vort);
-			sprintf(filename, "%s/vort_step_%d.bin", output.c_str(), step);
+			sprintf(filename, "%s/vort_step_%04d.bin", output.c_str(), step);
 			writeField(filename, vort, GRIDS);
 			fprintf(log_fd, "%s\n", filename); fflush(log_fd);
 
@@ -415,7 +270,7 @@ int main(int argc, char* args[]) {
 			memcpy(copy_for_c2r, divg_c, sizeof(fftwf_complex) * HALF_GRIDS);
 
 			fftwf_execute(p_bwd_divg); fftwf_backward_normalize(divg);
-			sprintf(filename, "%s/divg_step_%d.bin", output.c_str(), step);
+			sprintf(filename, "%s/divg_step_%04d.bin", output.c_str(), step);
 			writeField(filename, divg, GRIDS);
 			fprintf(log_fd, "%s\n", filename); fflush(log_fd);
 
@@ -427,7 +282,7 @@ int main(int argc, char* args[]) {
 			memcpy(copy_for_c2r, geop_c, sizeof(fftwf_complex) * HALF_GRIDS);
 
 			fftwf_execute(p_bwd_geop); fftwf_backward_normalize(geop);
-			sprintf(filename, "%s/geop_step_%d.bin", output.c_str(), step);
+			sprintf(filename, "%s/geop_step_%04d.bin", output.c_str(), step);
 			writeField(filename, geop, GRIDS);
 			fprintf(log_fd, "%s\n", filename); fflush(log_fd);
 
@@ -439,8 +294,6 @@ int main(int argc, char* args[]) {
 
 		RK4_run();
 
-		//fftwf_destroy_plan(p);
-		//fftwf_free(in); fftwf_free(out);
 	}
 
 	fclose(log_fd);
