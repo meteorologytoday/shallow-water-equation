@@ -1,0 +1,50 @@
+
+Get a term in runge-kutta method
+
+Variable summery:
+  fftwf_complex:  7
+  float        :  6
+
+                     #FFT#
+00. Initialize              |vort  .         .        .           .         .         .       .   .  
+01. Get vort_c and       F  |      |vort_c0  |vort_c  .           .         .         .       .   .
+    backup as vort_c0       |      |         |        .           .         .         .       .   .
+02. Initial vort_c          |      |         |        .           .         .         .       .   .
+03. Get dvortdx_c           |      |         |        |dvortdx_c  .         .         .       .   .
+04. Get dvortdx          B  |      |         |        |           |dvortdx  .         .       .   . 
+05. Get dvortdy_c           |      |         |        |dvortdy_c  |         .         .       .   .
+06. Get dvortdy          B  |      |         |        |           |         |dvortdy  .       .   .
+07. Get psi_c               |      |         |        |           |         |         |psi_c  .   .
+08. Get u_c                 |      |         |        |u_c        |         |         |       .   .
+09. Get dpsidy2_c           |      |         |        |           |         |         |       .   .                                          |dpsidy2
+10. Get dpsidx2_c           |      |         |        |           |         |         |       .   .                                          |dpsidy2
+11. Get dpsidy2             |      |         |        |           |         |         |       .   .                                          |dpsidy2
+12. Get dpsidxdy_c          |      |         |        |           |         |         |       .   .                                          |dpsidy2
+13. Get dpsidxdy            |      |         |        |           |         |         |       .   .                                          |dpsidy2
+14. Get lap_p_c
+15. Get lap_p
+
+09. Get u                B  |      |         |        |           |         |         |       |u
+10. Get v_c                 |      |         |        |v_c        |         |         |       |
+11. Get v                B  |      |         |        |           |         |         |       |   |v
+12. Get dvortdt             |      |         |        |           |         |         |       |   |   |dvortdt
+13. Get dvortdt_c        F  |      |         |        |dvortdt_c  |         |         |       |   |   |
+14. Dealiase dvortdt_c      |      |         |        |dvortdt_c* |         |         |       |   |   |
+15. Save dvortdt_c* as rk1  |      |         |        |           |         |         |       |   |   |         |rk1_c
+16. Update vort_c           |      |         |vort_c                                                            |
+17. Repeat 02-14 and        |      |         |                                                                  |       |rk2_c
+    get rk2                 |      |         |                                                                  |       |
+18. Restore vort_c          |      |         |vort_c0                                                           |       |
+    from vort_c0            |      |         |                                                                  |       |
+19. Update vort_c by rk2    |      |         |vort_c                                                            |       |
+20. Repeat 02-14 and        |      |         |                                                                  |       |     |rk3_c
+    get rk3                 |      |         |                                                                  |       |     |
+21. Restore vort_c          |      |         |vort_c0                                                           |       |     |
+    from vort_c0            |      |         |                                                                  |       |     |
+22. Update vort_c by rk3    |      |         |vort_c0                                                           |       |     |
+23. Repeat 02-14 and        |      |         |                                                                  |       |     |
+    get rk4                 |      |         |                                                                  |       |     |
+24. Get Update vort_c by    |      |         |vort_c                                                            |       |     |      |rk4_c
+    rk1, rk2, rk3, rk4      |      |         |                                                                  |       |     |      |
+25. Output vort if       B  |vort  |         |                                                                  |       |     |      |
+    necessary               |      |         |                                                                  |       |     |      |
