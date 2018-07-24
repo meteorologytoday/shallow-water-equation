@@ -24,7 +24,7 @@ y_vec = np.linspace(0, Ly, ny)
 t_range = np.array([0, 12.0])
 
 dt = 3.0
-record_step = 10
+record_step = 1
 total_steps = int(12 * 60 * 60 / dt)
 
 # 'streamline', 'barb', or 'none'

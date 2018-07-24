@@ -32,8 +32,8 @@ inline int IDX(int i, int j) { return (YPTS*i + j); }
 inline int HIDX(int i, int j) { return (HALF_YPTS*i + j); }
 
 const float dt = 3.0f;
-const int record_step = 10;
-const int total_steps = 60; //(12.0 * 60.0) * 60.0 / dt; // 12 hrs
+const int record_step = 1;
+const int total_steps = 2; //(12.0 * 60.0) * 60.0 / dt; // 12 hrs
 
 
 std::string input = "input";

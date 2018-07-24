@@ -11,6 +11,22 @@ template<int XPTS, int YPTS> fftwf_operation<XPTS,YPTS>::fftwf_operation(float L
 	this->dealiase_xwavenumber = (int) ceil(((float)XPTS)/3.0);
 	this->dealiase_ywavenumber = (int) ceil(((float)YPTS)/3.0);
 
+
+
+    // For nonlinear multiplication
+	this->dealiased_in1_c = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * HALF_GRIDS);
+	this->dealiased_in2_c = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * HALF_GRIDS);
+	this->dealiased_in1   = (float*) fftwf_malloc(sizeof(float) * GRIDS);
+	this->dealiased_in2   = (float*) fftwf_malloc(sizeof(float) * GRIDS);
+
+    this->p_bwd_in1 = fftwf_plan_dft_c2r_2d(XPTS, YPTS, this->dealiased_in1_c, this->dealiased_in1, FFTW_ESTIMATE);
+    this->p_bwd_in2 = fftwf_plan_dft_c2r_2d(XPTS, YPTS, this->dealiased_in2_c, this->dealiased_in2, FFTW_ESTIMATE);
+    this->p_fwd_in1 = fftwf_plan_dft_r2c_2d(XPTS, YPTS, this->dealiased_in1, this->dealiased_in1_c, FFTW_ESTIMATE);
+
+
+
+
+
 	// Creating partial derivatives
 	for(int i=0; i < this->HALF_XPTS; ++i) {
 		this->gradx_coe[i] = TWOPI * ((float) i) / Lx;
@@ -122,4 +138,26 @@ template<int XPTS, int YPTS> void fftwf_operation<XPTS,YPTS>::dealiase(fftwf_com
 		out[i][1] = in[i][1] * this->dealiasing_mask[i];
 	}
 }
+
+template<int XPTS, int YPTS> void fftwf_operation<XPTS,YPTS>::pseudospectral_mul(fftwf_complex *in1, fftwf_complex *in2, fftwf_complex *out) {
+    this->dealiase(in1, this->dealiased_in1_c);
+    this->dealiase(in2, this->dealiased_in2_c);
+
+    fftwf_execute(this->p_bwd_in1);
+    fftwf_execute(this->p_bwd_in2);
+   
+   	for(int i=0; i<this->GRIDS; ++i) {
+	    this->dealiased_in1[i] = this->dealiased_in1[i] * this->dealiased_in2[i] / this->GRIDS2;
+    }
+
+    fftwf_execute(this->p_fwd_in1);
+   
+   	for(int i=0; i<this->HALF_GRIDS; ++i) {
+		out[i][0] = this->dealiased_in1_c[i][0];
+		out[i][1] = this->dealiased_in1_c[i][1];
+	}
+
+}
+
+
 #endif

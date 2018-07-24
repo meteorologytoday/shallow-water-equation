@@ -34,6 +34,8 @@ int main(int argc, char* args[]) {
 	printf("Spatial Resolution dx : %.3f [m]\n", dx);
 	printf("Spatial Resolution dy : %.3f [m]\n", dy);
 	printf("Time Resolution dt    : %.3f [s]\n", dt);
+	printf("GRIDS                 : %d\n", GRIDS);
+	printf("HALF_GRIDS            : %d\n", HALF_GRIDS);
 	printf("#########################\n\n\n");
 	
 	printf("Start project.\n");
@@ -62,104 +64,94 @@ int main(int argc, char* args[]) {
 
 
 	auto getDvortdt = [&](){
-		
+	    //printf("Doing linear terms..."); fflush(stdout);	
 		// 1. Take laplacian (diffusion terms)
 		fop.laplacian(vort_c, lvort_c); 
-		fop.laplacian(divg_c, ldivg_c); 
-		fop.laplacian(geop_c,       lgeop_c);
+		//fop.laplacian(divg_c, ldivg_c); 
+		//fop.laplacian(geop_c, lgeop_c);
 
 		// 2. Invert divergent and rotational flow
 		fop.invertLaplacian(vort_c, psi_c);
-		fop.invertLaplacian(divg_c, chi_c);
+		//fop.invertLaplacian(divg_c, chi_c);
 		
+	    //printf("done1.\n"); fflush(stdout);	
 		// - rotation flow
 		// -- calculate u_vort
 		fop.grady(psi_c, tmp_c);
-		fftwf_execute(p_bwd_u_vort); fftwf_backward_normalize(u_vort);
-		for(int i=0; i<GRIDS;++i) { u_vort[i] = -u_vort[i]; }
-
+	    //printf("done2.\n"); fflush(stdout);	
+        cvop.mul(u_c, tmp_c, -1.0);
+	    //printf("done3.\n"); fflush(stdout);	
 		// -- calculate v_vort
-		fop.gradx(psi_c, tmp_c);
-		fftwf_execute(p_bwd_v_vort); fftwf_backward_normalize(v_vort);
+		fop.gradx(psi_c, v_c);
 
 		// - divergent flow
 		// -- calculate u_div
-		fop.gradx(chi_c, tmp_c);
-		fftwf_execute(p_bwd_u_divg); fftwf_backward_normalize(u_divg);
+		//fop.gradx(chi_c, tmp_c);
+        //cvop.iadd(u_c, tmp_c);
 
 		// -- calculate v_div
-		fop.grady(chi_c, tmp_c);
-		fftwf_execute(p_bwd_v_divg); fftwf_backward_normalize(v_divg);
+		//fop.grady(chi_c, tmp_c);
+        //cvop.iadd(v_c, tmp_c);
 
-		// - add together
-		vop.add(u, u_vort, u_divg);
-		vop.add(v, v_vort, v_divg);
+	    //printf("done.\n"); fflush(stdout);	
 
+	    //printf("Doing nonlinear terms..."); fflush(stdout);	
 		// 3. Calculate nonlinear multiplication in physical space
 
-		// - invert vort, h
-		fftwf_execute(p_bwd_vort); fftwf_backward_normalize(vort);
-		fftwf_execute(p_bwd_geop); fftwf_backward_normalize(geop);
+        cvop.add(absvort_c, vort_c, bg_vort_c);
+	    //printf("done3.1.\n"); fflush(stdout);	
+        fop.pseudospectral_mul(absvort_c, u_c, absvort_u_c);
+	    //printf("done3.2.\n"); fflush(stdout);	
+        fop.pseudospectral_mul(absvort_c, v_c, absvort_v_c);
 
-		// - vort to absvort
-		vop.add(absvort, vort, bg_vort);
-
-		// - calculate multiplication
-		vop.mul(absvort_u, absvort, u);
-		vop.mul(absvort_v, absvort, v);
-
-		vop.mul(geop_u, geop,  u);
-		vop.mul(geop_v, geop,  v);
-
-		vop.mul(v2,   v,     v);
-		vop.mul(u2,   u,     u);
-		vop.add( K , u2,    v2);
-		vop.add( E ,  K,  geop);
+	    //printf("done4.\n"); fflush(stdout);	
+        //fop.pseudospectral_mul(geop_c, u_c, geop_u_c);
+        //fop.pseudospectral_mul(geop_c, v_c, geop_v_c);
+        
+	    //printf("done5.\n"); fflush(stdout);	
+        //fop.pseudospectral_mul(u_c, u_c, u2_c);
+	    //printf("done5.5\n"); fflush(stdout);	
+        //fop.pseudospectral_mul(v_c, v_c, v2_c);
+	    //printf("done6.\n"); fflush(stdout);	
+        //cvop.add(E_c, u2_c, v2_c);
+        //cvop.iadd(E_c, geop_c);
+	    //printf("done7.\n"); fflush(stdout);	
 		
-		// - forward transformation
-		fftwf_execute(p_fwd_absvort_u);
-		fftwf_execute(p_fwd_absvort_v);
-		fftwf_execute(p_fwd_geop_u);
-		fftwf_execute(p_fwd_geop_v);
-		fftwf_execute(p_fwd_E);
-
-		// - get spectral derivative
-
-		// -- [vort]
-		vop.set(dvortdt_c, 0.0f);
+        // -- [vort]
+		cvop.set(dvortdt_c, 0.0f);
 
 		// --- diffusion, Rayleigh friction
-		vop.mul(tmp_c, lvort_c, NU);   vop.isub(dvortdt_c, tmp_c);
-		vop.mul(tmp_c,  vort_c, MU);   vop.iadd(dvortdt_c, tmp_c);
+		cvop.mul(tmp_c, lvort_c, NU);   cvop.isub(dvortdt_c, tmp_c);
+		cvop.mul(tmp_c,  vort_c, MU);   cvop.iadd(dvortdt_c, tmp_c);
 
 		// --- rest
-		fop.gradx(absvort_u_c, tmp_c); vop.isub(dvortdt_c, tmp_c);
-		fop.grady(absvort_v_c, tmp_c); vop.isub(dvortdt_c, tmp_c);
+		fop.gradx(absvort_u_c, tmp_c); cvop.isub(dvortdt_c, tmp_c);
+		fop.grady(absvort_v_c, tmp_c); cvop.isub(dvortdt_c, tmp_c);
 
 		// -- [divg]
-		vop.set(ddivgdt_c, 0.0f);
+		//cvop.set(ddivgdt_c, 0.0f);
 
 		// --- diffusion, Rayleigh friction
-		vop.mul(tmp_c, ldivg_c, NU);   vop.isub(ddivgdt_c, tmp_c);
-		vop.mul(tmp_c,  divg_c, MU);   vop.iadd(ddivgdt_c, tmp_c);
+		//cvop.mul(tmp_c, ldivg_c, NU);   cvop.isub(ddivgdt_c, tmp_c);
+		//cvop.mul(tmp_c,  divg_c, MU);   cvop.iadd(ddivgdt_c, tmp_c);
 
 		// --- rest
-		fop.gradx(absvort_v_c, tmp_c); vop.iadd(ddivgdt_c, tmp_c);
-		fop.grady(absvort_u_c, tmp_c); vop.isub(ddivgdt_c, tmp_c);
-		fop.laplacian(E_c, tmp_c);     vop.isub(ddivgdt_c, tmp_c);
+		//fop.gradx(absvort_v_c, tmp_c); cvop.iadd(ddivgdt_c, tmp_c);
+		//fop.grady(absvort_u_c, tmp_c); cvop.isub(ddivgdt_c, tmp_c);
+		//fop.laplacian(E_c, tmp_c);     cvop.isub(ddivgdt_c, tmp_c);
 
-		// -- [h]
-		vop.set(dgeopdt_c, 0.0f);
+		// -- [geop]
+		cvop.set(dgeopdt_c, 0.0f);
 
 		// --- Source
-		// vop.isub(dgeop_c, Q_c);
+		// cvop.isub(dgeop_c, Q_c);
 
 		// --- diffusion
-		vop.mul(tmp_c, lgeop_c, NU);   vop.isub(dgeopdt_c, tmp_c);
+		//cvop.mul(tmp_c, lgeop_c, NU);   cvop.isub(dgeopdt_c, tmp_c);
 
 		// --- rest
-		fop.gradx(geop_u_c, tmp_c);       vop.isub(dgeopdt_c, tmp_c);
-		fop.grady(geop_v_c, tmp_c);       vop.isub(dgeopdt_c, tmp_c);
+		//fop.gradx(geop_u_c, tmp_c);       cvop.isub(dgeopdt_c, tmp_c);
+		//fop.grady(geop_v_c, tmp_c);       cvop.isub(dgeopdt_c, tmp_c);
 
 		/*
 		#ifdef OUTPUT_GRAD_VORT
@@ -193,15 +185,16 @@ int main(int argc, char* args[]) {
 	float RK4_step_coe[3] = {0.5f, 0.5f, 1.0f};
 
 	auto RK4_run = [&]() {
+	    printf("RK4 run\n"); fflush(stdout);
 		memcpy(vort_c0, vort_c, sizeof(fftwf_complex) * HALF_GRIDS); // backup
 		memcpy(divg_c0, divg_c, sizeof(fftwf_complex) * HALF_GRIDS); // backup
 		memcpy(geop_c0,       geop_c, sizeof(fftwf_complex) * HALF_GRIDS); // backup
 
 		for(int k = 0; k < 4 ; ++k) {
 			getDvortdt();
-			vop.mul(rk4_vort_c[k], dvortdt_c, dt); 
-			vop.mul(rk4_divg_c[k], ddivgdt_c, dt) ;
-			vop.mul(rk4_geop_c[k], dgeopdt_c, dt);
+			cvop.mul(rk4_vort_c[k], dvortdt_c, dt); 
+			cvop.mul(rk4_divg_c[k], ddivgdt_c, dt) ;
+			cvop.mul(rk4_geop_c[k], dgeopdt_c, dt);
  
 			if(k==3) { continue; }
 
@@ -249,6 +242,10 @@ int main(int argc, char* args[]) {
 		printf("# Step %d, time = %.2f", step, step * dt);
 		if( (record_flag = ((step % record_step) == 0)) ) { printf(", record now!");}
 		printf("\n");
+
+        // NOW FOR TESTING, SET DIVERGENT = 0
+        cvop.set(divg_c, 0.0f);
+
 
 		if(record_flag) {
 

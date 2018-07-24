@@ -28,8 +28,21 @@ int main() {
 		} else {
 			c = (y-centery) / radius(x,y);
 		}
-		return sqrtf((1.0 - pow(epsilon,2)) / (1.0 - pow(epsilon*( sin( asin(c) + 3.1415/4.0 ) ),2)));
+		return sqrtf((1.0 - pow(epsilon,2)) / (1.0 - pow(epsilon * c,2)));
 	};
+
+
+
+	std::string file;
+
+    file = input + "/init_divg.bin";
+	writeField(file.c_str(), vort, GRIDS);
+
+	file = input + "/init_geop.bin";
+	writeField(file.c_str(), vort, GRIDS);
+
+
+
 
 	float x, y;
 	for(int i=0; i<XPTS; ++i) {
@@ -51,7 +64,7 @@ int main() {
 		}
 	}
 
-	std::string file = input + "/" + init_file;
+	file = input + "/init_vort.bin";
 	writeField(file.c_str(), vort, GRIDS);
 
 	return 0;
