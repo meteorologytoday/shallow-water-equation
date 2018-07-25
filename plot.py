@@ -67,6 +67,8 @@ for step in range(0, total_steps, record_step):
         vort = np.fromfile("%s/vort_step_%04d.bin" % (in_dir, step), dtype='<f4', count=(nx*ny)).reshape((nx, ny)).transpose()
         divg = np.fromfile("%s/divg_step_%04d.bin" % (in_dir, step), dtype='<f4', count=(nx*ny)).reshape((nx, ny)).transpose()
         geop = np.fromfile("%s/geop_step_%04d.bin" % (in_dir, step), dtype='<f4', count=(nx*ny)).reshape((nx, ny)).transpose()
+        u = np.fromfile("%s/u_step_%04d.bin" % (in_dir, step), dtype='<f4', count=(nx*ny)).reshape((nx, ny)).transpose()
+        v = np.fromfile("%s/v_step_%04d.bin" % (in_dir, step), dtype='<f4', count=(nx*ny)).reshape((nx, ny)).transpose()
     
     except IOError as e:
         print(e)
@@ -94,6 +96,13 @@ for step in range(0, total_steps, record_step):
     cmap = plt.get_cmap("jet")
     cbar_mappable = ax1.contourf(x_vec, y_vec, vort * 1000.0, cmap=cmap)
     cbar = fig.colorbar(cbar_mappable, ax=ax1, orientation='horizontal')
+
+    ax1.barbs( x_vec[::barb_skip],
+              y_vec[::barb_skip],
+              u[::barb_skip,::barb_skip] * 0.5144,
+              v[::barb_skip,::barb_skip] * 0.5144,
+              length=8
+    )
 
     
     # DIVERGENCE

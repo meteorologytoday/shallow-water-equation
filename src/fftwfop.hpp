@@ -15,11 +15,11 @@ private:
     fftwf_plan p_bwd_in1, p_bwd_in2, p_fwd_in1;
 
 	int dealiase_xwavenumber, dealiase_ywavenumber;
-	const int HALF_XPTS = (int)(XPTS/2) + 1,
-			  HALF_YPTS = (int)(YPTS/2) + 1,
-			  HALF_GRIDS = XPTS*HALF_YPTS,
-			  GRIDS = XPTS * YPTS,
-              GRIDS2 = XPTS*XPTS*YPTS*YPTS;
+	int const HALF_XPTS = (int)(XPTS/2) + 1,
+	    HALF_YPTS = (int)(YPTS/2) + 1,
+		HALF_GRIDS = XPTS*HALF_YPTS,
+		GRIDS = XPTS * YPTS,
+        GRIDS2 = XPTS*XPTS*YPTS*YPTS;
 public:
 	fftwf_operation(float Lx, float Ly);
 	~fftwf_operation();

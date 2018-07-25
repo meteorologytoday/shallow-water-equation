@@ -42,4 +42,3 @@ VectorOperation<HALF_GRIDS*2> cvop;
 
 char filename[256];
 
-

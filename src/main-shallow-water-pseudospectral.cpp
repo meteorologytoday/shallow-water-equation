@@ -63,12 +63,14 @@ int main(int argc, char* args[]) {
     printf("done.\n");
 
 
-	auto getDvortdt = [&](){
-	    //printf("Doing linear terms..."); fflush(stdout);	
+	auto getDvortdt = [&](int step, bool debug){
+
+        //printf("Doing linear terms..."); fflush(stdout);	
 		// 1. Take laplacian (diffusion terms)
 		fop.laplacian(vort_c, lvort_c); 
 		//fop.laplacian(divg_c, ldivg_c); 
 		//fop.laplacian(geop_c, lgeop_c);
+
 
 		// 2. Invert divergent and rotational flow
 		fop.invertLaplacian(vort_c, psi_c);
@@ -100,9 +102,21 @@ int main(int argc, char* args[]) {
 
         cvop.add(absvort_c, vort_c, bg_vort_c);
 	    //printf("done3.1.\n"); fflush(stdout);	
+	    //
+	    //
         fop.pseudospectral_mul(absvort_c, u_c, absvort_u_c);
-	    //printf("done3.2.\n"); fflush(stdout);	
         fop.pseudospectral_mul(absvort_c, v_c, absvort_v_c);
+	    if (debug) {
+            cvop.set(wksp_c, absvort_u_c); fftwf_execute(p_bwd_absvort_u); fftwf_backward_normalize(absvort_u);
+			sprintf(filename, "%s/absvort_u_step_%04d.bin", output.c_str(), step);
+			writeField(filename, absvort_u, GRIDS);
+			fprintf(log_fd, "%s\n", filename); fflush(log_fd);
+
+
+        }
+
+	    //printf("done3.2.\n"); fflush(stdout);	
+
 
 	    //printf("done4.\n"); fflush(stdout);	
         //fop.pseudospectral_mul(geop_c, u_c, geop_u_c);
@@ -121,8 +135,8 @@ int main(int argc, char* args[]) {
 		cvop.set(dvortdt_c, 0.0f);
 
 		// --- diffusion, Rayleigh friction
-		cvop.mul(tmp_c, lvort_c, NU);   cvop.isub(dvortdt_c, tmp_c);
-		cvop.mul(tmp_c,  vort_c, MU);   cvop.iadd(dvortdt_c, tmp_c);
+		cvop.mul(tmp_c, lvort_c, NU);   cvop.iadd(dvortdt_c, tmp_c);
+		cvop.mul(tmp_c,  vort_c, MU);   cvop.isub(dvortdt_c, tmp_c);
 
 		// --- rest
 		fop.gradx(absvort_u_c, tmp_c); cvop.isub(dvortdt_c, tmp_c);
@@ -153,15 +167,26 @@ int main(int argc, char* args[]) {
 		//fop.gradx(geop_u_c, tmp_c);       cvop.isub(dgeopdt_c, tmp_c);
 		//fop.grady(geop_v_c, tmp_c);       cvop.isub(dgeopdt_c, tmp_c);
 
-		/*
-		#ifdef OUTPUT_GRAD_VORT
 		if(debug) {
-			sprintf(filename, "%s/dvortdx_step_%d.bin", output.c_str(), step);
-			writeField(filename, dvortdx, GRIDS);
+    
+            cvop.set(wksp_c, u_c); fftwf_execute(p_bwd_u); fftwf_backward_normalize(u);
+			sprintf(filename, "%s/u_step_%04d.bin", output.c_str(), step);
+			writeField(filename, u, GRIDS);
 			fprintf(log_fd, "%s\n", filename); fflush(log_fd);
+
+            cvop.set(wksp_c, v_c); fftwf_execute(p_bwd_v); fftwf_backward_normalize(v);
+			sprintf(filename, "%s/v_step_%04d.bin", output.c_str(), step);
+			writeField(filename, v, GRIDS);
+			fprintf(log_fd, "%s\n", filename); fflush(log_fd);
+
+            cvop.set(wksp_c, dvortdt_c); fftwf_execute(p_bwd_dvortdt); fftwf_backward_normalize(dvortdt);
+			sprintf(filename, "%s/dvortdt_step_%04d.bin", output.c_str(), step);
+			writeField(filename, dvortdt, GRIDS);
+			fprintf(log_fd, "%s\n", filename); fflush(log_fd);
+
+
+
 		}
-		#endif
-		*/
 
 	};
 
@@ -184,14 +209,14 @@ int main(int argc, char* args[]) {
 
 	float RK4_step_coe[3] = {0.5f, 0.5f, 1.0f};
 
-	auto RK4_run = [&]() {
+	auto RK4_run = [&](int step, bool debug) {
 	    printf("RK4 run\n"); fflush(stdout);
 		memcpy(vort_c0, vort_c, sizeof(fftwf_complex) * HALF_GRIDS); // backup
 		memcpy(divg_c0, divg_c, sizeof(fftwf_complex) * HALF_GRIDS); // backup
-		memcpy(geop_c0,       geop_c, sizeof(fftwf_complex) * HALF_GRIDS); // backup
+		memcpy(geop_c0, geop_c, sizeof(fftwf_complex) * HALF_GRIDS); // backup
 
 		for(int k = 0; k < 4 ; ++k) {
-			getDvortdt();
+			getDvortdt(step, debug && (k==0));
 			cvop.mul(rk4_vort_c[k], dvortdt_c, dt); 
 			cvop.mul(rk4_divg_c[k], ddivgdt_c, dt) ;
 			cvop.mul(rk4_geop_c[k], dgeopdt_c, dt);
@@ -232,9 +257,7 @@ int main(int argc, char* args[]) {
 	fftwf_execute(p_fwd_vort);
 	fftwf_execute(p_fwd_divg);
 	fftwf_execute(p_fwd_geop);
-	printf("[1] Fwd Q ... "); fflush(stdout);
 	fftwf_execute(p_fwd_Q);
-	printf("done\n");
 
 	int record_flag = 0;
 	for(int step = 0; step < total_steps; ++step) {
@@ -261,7 +284,7 @@ int main(int argc, char* args[]) {
 			// restore vort_c because c2r must destroy input (NO!!!!!)
 			memcpy(vort_c, copy_for_c2r, sizeof(fftwf_complex) * HALF_GRIDS);
 
-			
+			/*
 			// Output divg
 			// backup vort_c because c2r must destroy input (NO!!!!!)
 			memcpy(copy_for_c2r, divg_c, sizeof(fftwf_complex) * HALF_GRIDS);
@@ -274,7 +297,7 @@ int main(int argc, char* args[]) {
 			// restore vort_c because c2r must destroy input (NO!!!!!)
 			memcpy(divg_c, copy_for_c2r, sizeof(fftwf_complex) * HALF_GRIDS);
 	
-			// Output h
+			// Output geop
 			// backup vort_c because c2r must destroy input (NO!!!!!)
 			memcpy(copy_for_c2r, geop_c, sizeof(fftwf_complex) * HALF_GRIDS);
 
@@ -285,11 +308,12 @@ int main(int argc, char* args[]) {
 
 			// restore vort_c because c2r must destroy input (NO!!!!!)
 			memcpy(geop_c, copy_for_c2r, sizeof(fftwf_complex) * HALF_GRIDS);
+            */
 
 		}
 
 
-		RK4_run();
+		RK4_run(step, false);
 
 	}
 

@@ -92,3 +92,21 @@
 	dy = Ly / YPTS;
 
 
+
+
+    // debug variables
+    fftwf_complex *wksp_c = malloc_field_im();
+    float *u = malloc_field_re();
+    float *v = malloc_field_re();
+    float *lvort = malloc_field_re();
+    float *dvortdt = malloc_field_re();
+    float *absvort = malloc_field_re();
+    float *absvort_u = malloc_field_re();
+    fftwf_plan p_bwd_u = crt_bwd_plan(u, wksp_c);
+    fftwf_plan p_bwd_v = crt_bwd_plan(v, wksp_c);
+    fftwf_plan p_bwd_lvort = crt_bwd_plan(lvort, wksp_c);
+    fftwf_plan p_bwd_dvortdt = crt_bwd_plan(dvortdt, wksp_c);
+    fftwf_plan p_bwd_absvort = crt_bwd_plan(absvort, wksp_c);
+    fftwf_plan p_bwd_absvort_u = crt_bwd_plan(absvort_u, wksp_c);
+
+    

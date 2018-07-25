@@ -4,20 +4,20 @@
 #define FFTWF_OPERATION_CPP
 template<int XPTS, int YPTS> fftwf_operation<XPTS,YPTS>::fftwf_operation(float Lx, float Ly) {
 	this->gradx_coe = (float*) fftwf_malloc(sizeof(float) * XPTS);
-	this->grady_coe = (float*) fftwf_malloc(sizeof(float) * HALF_YPTS);
-	this->laplacian_coe_inverse = (float*) fftwf_malloc(sizeof(float) * HALF_GRIDS);
-	this->laplacian_coe = (float*) fftwf_malloc(sizeof(float) * HALF_GRIDS);
-	this->dealiasing_mask = (float*) fftwf_malloc(sizeof(float) * HALF_GRIDS);
+	this->grady_coe = (float*) fftwf_malloc(sizeof(float) * this->HALF_YPTS);
+	this->laplacian_coe_inverse = (float*) fftwf_malloc(sizeof(float) * this->HALF_GRIDS);
+	this->laplacian_coe = (float*) fftwf_malloc(sizeof(float) * this->HALF_GRIDS);
+	this->dealiasing_mask = (float*) fftwf_malloc(sizeof(float) * this->HALF_GRIDS);
 	this->dealiase_xwavenumber = (int) ceil(((float)XPTS)/3.0);
 	this->dealiase_ywavenumber = (int) ceil(((float)YPTS)/3.0);
 
 
 
     // For nonlinear multiplication
-	this->dealiased_in1_c = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * HALF_GRIDS);
-	this->dealiased_in2_c = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * HALF_GRIDS);
-	this->dealiased_in1   = (float*) fftwf_malloc(sizeof(float) * GRIDS);
-	this->dealiased_in2   = (float*) fftwf_malloc(sizeof(float) * GRIDS);
+	this->dealiased_in1_c = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * this->HALF_GRIDS);
+	this->dealiased_in2_c = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * this->HALF_GRIDS);
+	this->dealiased_in1   = (float*) fftwf_malloc(sizeof(float) * this->GRIDS);
+	this->dealiased_in2   = (float*) fftwf_malloc(sizeof(float) * this->GRIDS);
 
     this->p_bwd_in1 = fftwf_plan_dft_c2r_2d(XPTS, YPTS, this->dealiased_in1_c, this->dealiased_in1, FFTW_ESTIMATE);
     this->p_bwd_in2 = fftwf_plan_dft_c2r_2d(XPTS, YPTS, this->dealiased_in2_c, this->dealiased_in2, FFTW_ESTIMATE);
@@ -145,16 +145,20 @@ template<int XPTS, int YPTS> void fftwf_operation<XPTS,YPTS>::pseudospectral_mul
 
     fftwf_execute(this->p_bwd_in1);
     fftwf_execute(this->p_bwd_in2);
-   
+  
    	for(int i=0; i<this->GRIDS; ++i) {
-	    this->dealiased_in1[i] = this->dealiased_in1[i] * this->dealiased_in2[i] / this->GRIDS2;
+        //printf("%f, %f, %d, %d\n", this->dealiased_in1[i], this->dealiased_in2[i],  GRIDS2, this->GRIDS);
+	    this->dealiased_in1[i] = this->dealiased_in1[i] * this->dealiased_in2[i] / this->GRIDS / this->GRIDS;
+
     }
 
     fftwf_execute(this->p_fwd_in1);
    
-   	for(int i=0; i<this->HALF_GRIDS; ++i) {
+   	for(int i=0; i < HALF_GRIDS; ++i) {
 		out[i][0] = this->dealiased_in1_c[i][0];
 		out[i][1] = this->dealiased_in1_c[i][1];
+        //printf("%f, %f\n", out[i][0], out[i][1]);
+
 	}
 
 }
