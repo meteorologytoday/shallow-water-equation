@@ -54,7 +54,7 @@ exe: $(EXE_OUT)
 libs: $(LIB_SO)
 
 .PHONY: makefield
-makefield: makefield-elliptic-vortex.out makefield-const-vortex.out makefield-gaussian.out makefield-Kuo2004.out
+makefield: makefield-elliptic-vortex.out makefield-gaussian.out makefield-plateau.out
 
 .PHONY: all
 all: | dirs libs exe makefield vort_src_input.out

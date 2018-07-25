@@ -26,7 +26,6 @@ using namespace std;
 int main(int argc, char* args[]) {
 
 	printf("##### Model setting #####\n");
-	printf("Initial file          : %s \n", init_file.c_str());
 	printf("Input folder          : %s \n", input.c_str());
 	printf("Output folder         : %s \n", output.c_str());
 	printf("Length X              : %.3f [m]\n", LX);
@@ -55,11 +54,11 @@ int main(int argc, char* args[]) {
 	sprintf(filename, "%s/init_vort.bin", input.c_str());
 	readField(filename, vort, GRIDS);
 
-	//sprintf(filename, "%s/init_divg.bin", input.c_str());
-	//readField(filename, vort, GRIDS);
+	sprintf(filename, "%s/init_divg.bin", input.c_str());
+	readField(filename, divg, GRIDS);
 
-	//sprintf(filename, "%s/init_geop.bin", input.c_str());
-	//readField(filename, vort, GRIDS);
+	sprintf(filename, "%s/init_geop.bin", input.c_str());
+	readField(filename, geop, GRIDS);
     printf("done.\n");
 
 
@@ -68,13 +67,13 @@ int main(int argc, char* args[]) {
         //printf("Doing linear terms..."); fflush(stdout);	
 		// 1. Take laplacian (diffusion terms)
 		fop.laplacian(vort_c, lvort_c); 
-		//fop.laplacian(divg_c, ldivg_c); 
-		//fop.laplacian(geop_c, lgeop_c);
+		fop.laplacian(divg_c, ldivg_c); 
+		fop.laplacian(geop_c, lgeop_c);
 
 
 		// 2. Invert divergent and rotational flow
 		fop.invertLaplacian(vort_c, psi_c);
-		//fop.invertLaplacian(divg_c, chi_c);
+		fop.invertLaplacian(divg_c, chi_c);
 		
 	    //printf("done1.\n"); fflush(stdout);	
 		// - rotation flow
@@ -88,12 +87,12 @@ int main(int argc, char* args[]) {
 
 		// - divergent flow
 		// -- calculate u_div
-		//fop.gradx(chi_c, tmp_c);
-        //cvop.iadd(u_c, tmp_c);
+		fop.gradx(chi_c, tmp_c);
+        cvop.iadd(u_c, tmp_c);
 
 		// -- calculate v_div
-		//fop.grady(chi_c, tmp_c);
-        //cvop.iadd(v_c, tmp_c);
+		fop.grady(chi_c, tmp_c);
+        cvop.iadd(v_c, tmp_c);
 
 	    //printf("done.\n"); fflush(stdout);	
 
@@ -106,6 +105,7 @@ int main(int argc, char* args[]) {
 	    //
         fop.pseudospectral_mul(absvort_c, u_c, absvort_u_c);
         fop.pseudospectral_mul(absvort_c, v_c, absvort_v_c);
+        /*
 	    if (debug) {
             cvop.set(wksp_c, absvort_u_c); fftwf_execute(p_bwd_absvort_u); fftwf_backward_normalize(absvort_u);
 			sprintf(filename, "%s/absvort_u_step_%04d.bin", output.c_str(), step);
@@ -114,21 +114,21 @@ int main(int argc, char* args[]) {
 
 
         }
-
+        */
 	    //printf("done3.2.\n"); fflush(stdout);	
 
 
 	    //printf("done4.\n"); fflush(stdout);	
-        //fop.pseudospectral_mul(geop_c, u_c, geop_u_c);
-        //fop.pseudospectral_mul(geop_c, v_c, geop_v_c);
+        fop.pseudospectral_mul(geop_c, u_c, geop_u_c);
+        fop.pseudospectral_mul(geop_c, v_c, geop_v_c);
         
 	    //printf("done5.\n"); fflush(stdout);	
-        //fop.pseudospectral_mul(u_c, u_c, u2_c);
+        fop.pseudospectral_mul(u_c, u_c, u2_c);
 	    //printf("done5.5\n"); fflush(stdout);	
-        //fop.pseudospectral_mul(v_c, v_c, v2_c);
+        fop.pseudospectral_mul(v_c, v_c, v2_c);
 	    //printf("done6.\n"); fflush(stdout);	
-        //cvop.add(E_c, u2_c, v2_c);
-        //cvop.iadd(E_c, geop_c);
+        cvop.add(E_c, u2_c, v2_c);
+        cvop.iadd(E_c, geop_c);
 	    //printf("done7.\n"); fflush(stdout);	
 		
         // -- [vort]
@@ -138,21 +138,21 @@ int main(int argc, char* args[]) {
 		cvop.mul(tmp_c, lvort_c, NU);   cvop.iadd(dvortdt_c, tmp_c);
 		cvop.mul(tmp_c,  vort_c, MU);   cvop.isub(dvortdt_c, tmp_c);
 
-		// --- rest
+		// --- rest terms
 		fop.gradx(absvort_u_c, tmp_c); cvop.isub(dvortdt_c, tmp_c);
 		fop.grady(absvort_v_c, tmp_c); cvop.isub(dvortdt_c, tmp_c);
 
 		// -- [divg]
-		//cvop.set(ddivgdt_c, 0.0f);
+		cvop.set(ddivgdt_c, 0.0f);
 
 		// --- diffusion, Rayleigh friction
-		//cvop.mul(tmp_c, ldivg_c, NU);   cvop.isub(ddivgdt_c, tmp_c);
-		//cvop.mul(tmp_c,  divg_c, MU);   cvop.iadd(ddivgdt_c, tmp_c);
+		cvop.mul(tmp_c, ldivg_c, NU);   cvop.iadd(ddivgdt_c, tmp_c);
+		cvop.mul(tmp_c,  divg_c, MU);   cvop.isub(ddivgdt_c, tmp_c);
 
-		// --- rest
-		//fop.gradx(absvort_v_c, tmp_c); cvop.iadd(ddivgdt_c, tmp_c);
-		//fop.grady(absvort_u_c, tmp_c); cvop.isub(ddivgdt_c, tmp_c);
-		//fop.laplacian(E_c, tmp_c);     cvop.isub(ddivgdt_c, tmp_c);
+		// --- rest terms
+		fop.gradx(absvort_v_c, tmp_c);  cvop.iadd(ddivgdt_c, tmp_c);
+		fop.grady(absvort_u_c, tmp_c);  cvop.isub(ddivgdt_c, tmp_c);
+		fop.laplacian(E_c, tmp_c);      cvop.isub(ddivgdt_c, tmp_c);
 
 		// -- [geop]
 		cvop.set(dgeopdt_c, 0.0f);
@@ -161,11 +161,11 @@ int main(int argc, char* args[]) {
 		// cvop.isub(dgeop_c, Q_c);
 
 		// --- diffusion
-		//cvop.mul(tmp_c, lgeop_c, NU);   cvop.isub(dgeopdt_c, tmp_c);
+		cvop.mul(tmp_c, lgeop_c, NU);   cvop.iadd(dgeopdt_c, tmp_c);
 
-		// --- rest
-		//fop.gradx(geop_u_c, tmp_c);       cvop.isub(dgeopdt_c, tmp_c);
-		//fop.grady(geop_v_c, tmp_c);       cvop.isub(dgeopdt_c, tmp_c);
+		// --- rest terms
+		fop.gradx(geop_u_c, tmp_c);     cvop.isub(dgeopdt_c, tmp_c);
+		fop.grady(geop_v_c, tmp_c);     cvop.isub(dgeopdt_c, tmp_c);
 
 		if(debug) {
     
@@ -284,7 +284,7 @@ int main(int argc, char* args[]) {
 			// restore vort_c because c2r must destroy input (NO!!!!!)
 			memcpy(vort_c, copy_for_c2r, sizeof(fftwf_complex) * HALF_GRIDS);
 
-			/*
+			
 			// Output divg
 			// backup vort_c because c2r must destroy input (NO!!!!!)
 			memcpy(copy_for_c2r, divg_c, sizeof(fftwf_complex) * HALF_GRIDS);
@@ -308,7 +308,6 @@ int main(int argc, char* args[]) {
 
 			// restore vort_c because c2r must destroy input (NO!!!!!)
 			memcpy(geop_c, copy_for_c2r, sizeof(fftwf_complex) * HALF_GRIDS);
-            */
 
 		}
 

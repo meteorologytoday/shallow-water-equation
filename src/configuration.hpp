@@ -33,11 +33,10 @@ inline int HIDX(int i, int j) { return (HALF_YPTS*i + j); }
 
 const float dt = 3.0f;
 const int record_step = 100;
-const int total_steps = (12.0 * 60.0) * 60.0 / dt; // 12 hrs
+const int total_steps = 3600.0 / dt; //(12.0 * 60.0) * 60.0 / dt; // 12 hrs
 
 
 std::string input = "input";
 std::string output = "output";
-std::string init_file = "initial_vorticity.bin";
 
 #endif
