@@ -31,9 +31,9 @@ const int HALF_GRIDS = XPTS * HALF_YPTS;
 inline int IDX(int i, int j) { return (YPTS*i + j); }
 inline int HIDX(int i, int j) { return (HALF_YPTS*i + j); }
 
-const float dt = 3.0f;
-const int record_step = 100;
-const int total_steps = 3600.0 / dt; //(12.0 * 60.0) * 60.0 / dt; // 12 hrs
+const float dt = 1.0f;
+const int record_step = 30;
+const int total_steps = (12.0 * 60.0) * 60.0 / dt; // 12 hrs
 
 
 std::string input = "input";

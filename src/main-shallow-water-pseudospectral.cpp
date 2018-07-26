@@ -267,7 +267,7 @@ int main(int argc, char* args[]) {
 		printf("\n");
 
         // NOW FOR TESTING, SET DIVERGENT = 0
-        cvop.set(divg_c, 0.0f);
+        // cvop.set(divg_c, 0.0f);
 
 
 		if(record_flag) {

@@ -12,7 +12,7 @@
 int main() {
 	
 	float centery = LY / 2.0, plateau_wid = 50000.0, skirt_wid = 10000.0,
-          geop_base = 9.8 * 400.0, geop_diff = 9.8 * 40.0;
+          geop_base = 7000.0, geop_diff = geop_base * 0.05;
 
 
 	float* vort = (float*) malloc(sizeof(float) * GRIDS);
